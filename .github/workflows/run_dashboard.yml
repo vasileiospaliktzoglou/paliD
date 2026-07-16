@@ -2,7 +2,7 @@ name: Daily PALI Dashboard Update
 
 on:
   schedule:
-    - cron: '30 8 * * 1-5'
+    - cron: '30 8 * * 1-5' # Runs at 09:30 CET
   workflow_dispatch: 
 
 permissions:
@@ -40,9 +40,10 @@ jobs:
         body: file://index.html
         html_body: true
 
-    - name: Deploy to GitHub Pages Website
-      uses: peaceiris/actions-gh-pages@v4
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./
-        destination_dir: ./
+    - name: Commit and Push Webpage File to Main Branch
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add index.html
+        git commit -m "Update dynamic web dashboard layout" || echo "No changes to commit"
+        git push origin main
