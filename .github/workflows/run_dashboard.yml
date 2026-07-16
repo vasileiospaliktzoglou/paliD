@@ -2,7 +2,7 @@ name: Daily PALI Dashboard Update
 
 on:
   schedule:
-    - cron: '30 8 * * 1-5' # Runs at 08:30 UTC Mon-Fri
+    - cron: '30 8 * * 1-5' # Runs at 08:30 UTC Mon-Fri (09:30 CET)
   workflow_dispatch: 
 
 jobs:
@@ -11,17 +11,20 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
-    # ... (Setup and Install steps) ...
+      
+    # ... (Setup Python and Install Libraries steps remain the same) ...
+
     - name: Execute Dashboard Script
       run: python dashboard.py
-    - name: Send Email Report
+
+    - name: Send Automated Email Report
       uses: dawidd6/action-send-mail@v4
       with:
         server_address: smtp.gmail.com
         server_port: 465
         username: ${{ secrets.MAIL_USERNAME }}
-        password: ${{ secrets.MAIL_PASSWORD }} # Use Gmail App Password
+        password: ${{ secrets.MAIL_PASSWORD }}
         subject: PALI Execution Actions Summary
         to: paliktzoglou@gmail.com
-        from: PALI Bot <pali-dashboard@github.com>
-        body: file://email_report.txt # Sends generated report
+        from: PALI Quant Bot <pali-dashboard@github.com>
+        body: file://email_report.txt
