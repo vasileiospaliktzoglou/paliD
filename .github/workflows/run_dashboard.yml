@@ -2,25 +2,26 @@ name: Daily PALI Dashboard Update
 
 on:
   schedule:
-    # Runs Monday-Friday at 08:30 UTC (09:30 CET / European Market Open)
-        - cron: '00 10 * * 1-5'
-  workflow_dispatch: # Allows you to manually click a button on GitHub to refresh it anytime
+    - cron: '30 8 * * 1-5' # Runs at 08:30 UTC Mon-Fri
+  workflow_dispatch: 
 
 jobs:
   run-dashboard:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Repository Code
+    - name: Checkout Code
       uses: actions/checkout@v4
-
-    - name: Set Up Python Engine
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-        cache: 'pip'
-
-    - name: Install Libraries
-      run: pip install -r requirements.txt
-
-    - name: Execute Quantitative Engine
+    # ... (Setup and Install steps) ...
+    - name: Execute Dashboard Script
       run: python dashboard.py
+    - name: Send Email Report
+      uses: dawidd6/action-send-mail@v4
+      with:
+        server_address: smtp.gmail.com
+        server_port: 465
+        username: ${{ secrets.MAIL_USERNAME }}
+        password: ${{ secrets.MAIL_PASSWORD }} # Use Gmail App Password
+        subject: PALI Execution Actions Summary
+        to: paliktzoglou@gmail.com
+        from: PALI Bot <pali-dashboard@github.com>
+        body: file://email_report.txt # Sends generated report
