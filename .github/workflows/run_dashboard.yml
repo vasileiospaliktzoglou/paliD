@@ -1,0 +1,26 @@
+name: Daily PALI Dashboard Update
+
+on:
+  schedule:
+    # Runs Monday-Friday at 08:30 UTC (09:30 CET / European Market Open)
+    - cron: '30 8 * * 1-5'
+  workflow_dispatch: # Allows you to manually click a button on GitHub to refresh it anytime
+
+jobs:
+  run-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository Code
+      uses: actions/checkout@v4
+
+    - name: Set Up Python Engine
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install Libraries
+      run: pip install -r requirements.txt
+
+    - name: Execute Quantitative Engine
+      run: python dashboard.py
