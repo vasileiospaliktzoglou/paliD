@@ -3,7 +3,7 @@ name: Daily PALI Dashboard Update
 on:
   schedule:
     # Runs Monday-Friday at 08:30 UTC (09:30 CET / European Market Open)
-    - cron: '30 8 * * 1-5'
+        - cron: '00 10 * * 1-5'
   workflow_dispatch: # Allows you to manually click a button on GitHub to refresh it anytime
 
 jobs:
