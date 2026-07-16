@@ -39,6 +39,11 @@ def generate_etf_metrics(regime, days_left):
         midpoint_20d = rolling_window['Close'].mean()
         std_dev_20d = rolling_window['Close'].std()
         
+        # Isolate the current trading session's exact Intraday low and high limits
+        today_session = hist.iloc[-1]
+        daily_low = today_session['Low']
+        daily_high = today_session['High']
+        
         if regime == "BULL":
             target_limit = midpoint_20d - (0.5 * std_dev_20d)
         else:
@@ -58,6 +63,7 @@ def generate_etf_metrics(regime, days_left):
             
         results.append({
             "ETF": display_name, "Price": f"€{live_price:.2f}", "Avg": f"€{midpoint_20d:.2f}",
+            "DailyLow": f"€{daily_low:.2f}", "DailyHigh": f"€{daily_high:.2f}",
             "Volatility": f"€{std_dev_20d:.2f}", "Target": f"€{target_limit:.2f}",
             "ZScore": f"{z_score:.2f}", "Action": action, "Class": color_class
         })
@@ -71,13 +77,14 @@ if __name__ == "__main__":
     regime_text = "🟢 BULL REGIME (Normal Targets)" if regime == "BULL" else "🔴 BEAR REGIME (Panic Protections Active)"
     regime_class = "bull-banner" if regime == "BULL" else "bear-banner"
     
-    # Generate pure HTML layout structure
     table_rows = ""
     for m in metrics:
         table_rows += f"""
         <tr>
             <td><strong>{m['ETF']}</strong></td>
             <td>{m['Price']}</td>
+            <td><span class="range-text-low">{m['DailyLow']}</span></td>
+            <td><span class="range-text-high">{m['DailyHigh']}</span></td>
             <td>{m['Avg']}</td>
             <td>{m['Volatility']}</td>
             <td><strong>{m['Target']}</strong></td>
@@ -94,10 +101,10 @@ if __name__ == "__main__":
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
             body {{ font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f8f9fa; color: #212529; padding: 20px; }}
-            .container {{ max-width: 900px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }}
+            .container {{ max-width: 1050px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }}
             h1 {{ font-size: 24px; margin-top: 0; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }}
             .meta {{ font-size: 14px; color: #64748b; margin-bottom: 20px; }}
-            .banner {{ padding: 12px 15px; border-radius: 6px; font-weight: 6px; margin-bottom: 25px; font-weight: bold; }}
+            .banner {{ padding: 12px 15px; border-radius: 6px; font-weight: bold; margin-bottom: 25px; }}
             .bull-banner {{ background-color: #e6f4ea; color: #137333; }}
             .bear-banner {{ background-color: #fce8e6; color: #c5221f; }}
             table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
@@ -106,11 +113,13 @@ if __name__ == "__main__":
             .badge {{ padding: 6px 12px; border-radius: 4px; font-weight: 600; font-size: 13px; display: inline-block; }}
             .buy-now {{ background-color: #e6f4ea; color: #137333; }}
             .set-limit {{ background-color: #e8f0fe; color: #1a73e8; }}
+            .range-text-low {{ color: #b45309; font-weight: 500; }}
+            .range-text-high {{ color: #0369a1; font-weight: 500; }}
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>PALI ETF Execution Dashboard v2.0</h1>
+            <h1>PALI ETF Execution Dashboard v2.2</h1>
             <div class="meta">Last Updated: {datetime.now().strftime('%d %b %Y %H:%M')} CET | Monthly Deadline Status: <strong>{days_left} Trading Days Left</strong></div>
             <div class="banner {regime_class}">Macro Market Trend (SPY Filter): {regime_text}</div>
             <table>
@@ -118,6 +127,8 @@ if __name__ == "__main__":
                     <tr>
                         <th>ETF</th>
                         <th>Live Price</th>
+                        <th>Daily Low</th>
+                        <th>Daily High</th>
                         <th>20D Midpoint</th>
                         <th>Daily Volatility</th>
                         <th>Target Limit Price</th>
@@ -135,4 +146,4 @@ if __name__ == "__main__":
     
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html_content)
-    print("Dashboard static webpage built successfully!")
+    print("Dashboard static webpage built successfully with intraday daily anchors!")
