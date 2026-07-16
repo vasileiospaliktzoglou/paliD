@@ -19,16 +19,13 @@ def calculate_macro_regime():
     return regime, live_price, ma_200
 
 def get_days_to_deadline():
-    """Calculate trading days left until TDM -4 (Ultimate Monthly Buy Window)"""
     today = datetime.now()
     if today.month == 12:
         end_of_month = datetime(today.year + 1, 1, 1)
     else:
         end_of_month = datetime(today.year, today.month + 1, 1)
-        
     total_days = pd.date_range(start=today, end=end_of_month, freq='B')
-    days_to_deadline = len(total_days) - 4
-    return max(0, days_to_deadline)
+    return max(0, len(total_days) - 4)
 
 def generate_etf_metrics(regime, days_left):
     results = []
@@ -49,45 +46,93 @@ def generate_etf_metrics(regime, days_left):
             
         z_score = (live_price - midpoint_20d) / std_dev_20d
         
-        # Rule Check: Force market execution if deadline window has expired
         if days_left <= 0:
-            action = "🟢 FORCE MARKET BUY NOW (Deadline Reached)"
+            action = "🟢 FORCE MARKET BUY NOW"
+            color_class = "buy-now"
         elif live_price <= target_limit:
-            action = "🟢 TARGET HIT: EXECUTE MARKET BUY"
+            action = "🟢 TARGET HIT: MARKET BUY"
+            color_class = "buy-now"
         else:
-            action = f"🎯 SET DAILY LIMIT ORDER AT €{target_limit:.2f}"
+            action = f"🎯 SET DAILY LIMIT AT €{target_limit:.2f}"
+            color_class = "set-limit"
             
         results.append({
-            "ETF": display_name, "Live Price": f"€{live_price:.2f}", "20D Avg": f"€{midpoint_20d:.2f}",
-            "Volatility": f"€{std_dev_20d:.2f}", "Target Limit": f"€{target_limit:.2f}",
-            "Z-Score": f"{z_score:.2f}", "Core Action": action
+            "ETF": display_name, "Price": f"€{live_price:.2f}", "Avg": f"€{midpoint_20d:.2f}",
+            "Volatility": f"€{std_dev_20d:.2f}", "Target": f"€{target_limit:.2f}",
+            "ZScore": f"{z_score:.2f}", "Action": action, "Class": color_class
         })
-    return pd.DataFrame(results)
+    return results
 
 if __name__ == "__main__":
     regime, spy_live, spy_ma = calculate_macro_regime()
     days_left = get_days_to_deadline()
+    metrics = generate_etf_metrics(regime, days_left)
     
-    # Structure text strings for email formatting
-    report = []
-    report.append("=" * 80)
-    report.append(f"PALI INSTITUTIONAL EXECUTION MATRICES | {datetime.now().strftime('%d %b %Y %H:%M')}")
-    report.append("=" * 80)
-    regime_str = "🟢 BULL REGIME (Normal Targets)" if regime == "BULL" else "🔴 BEAR REGIME (Panic Target Cushions Enabled)"
-    report.append(f"Macro Trend (SPY): {regime_str}")
-    report.append(f"SPY Live Price: ${spy_live:.2f} | SPY 200MA Baseline: ${spy_ma:.2f}")
-    report.append(f"Trading Days Remaining to Monthly Deadline Window: {days_left} Days")
-    report.append("-" * 80)
+    regime_text = "🟢 BULL REGIME (Normal Targets)" if regime == "BULL" else "🔴 BEAR REGIME (Panic Protections Active)"
+    regime_class = "bull-banner" if regime == "BULL" else "bear-banner"
     
-    df_metrics = generate_etf_metrics(regime, days_left)
-    report.append(df_metrics.to_string(index=False))
-    report.append("=" * 80)
+    # Generate pure HTML layout structure
+    table_rows = ""
+    for m in metrics:
+        table_rows += f"""
+        <tr>
+            <td><strong>{m['ETF']}</strong></td>
+            <td>{m['Price']}</td>
+            <td>{m['Avg']}</td>
+            <td>{m['Volatility']}</td>
+            <td><strong>{m['Target']}</strong></td>
+            <td>{m['ZScore']}</td>
+            <td><span class="badge {m['Class']}">{m['Action']}</span></td>
+        </tr>
+        """
+        
+    html_content = f"""<!DOCTYPE html>
+    <html>
+    <head>
+        <title>PALI Execute Dashboard</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {{ font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f8f9fa; color: #212529; padding: 20px; }}
+            .container {{ max-width: 900px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }}
+            h1 {{ font-size: 24px; margin-top: 0; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }}
+            .meta {{ font-size: 14px; color: #64748b; margin-bottom: 20px; }}
+            .banner {{ padding: 12px 15px; border-radius: 6px; font-weight: 6px; margin-bottom: 25px; font-weight: bold; }}
+            .bull-banner {{ background-color: #e6f4ea; color: #137333; }}
+            .bear-banner {{ background-color: #fce8e6; color: #c5221f; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
+            th, td {{ padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }}
+            th {{ background-color: #f1f5f9; color: #475569; font-weight: 600; }}
+            .badge {{ padding: 6px 12px; border-radius: 4px; font-weight: 600; font-size: 13px; display: inline-block; }}
+            .buy-now {{ background-color: #e6f4ea; color: #137333; }}
+            .set-limit {{ background-color: #e8f0fe; color: #1a73e8; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>PALI ETF Execution Dashboard v2.0</h1>
+            <div class="meta">Last Updated: {datetime.now().strftime('%d %b %Y %H:%M')} CET | Monthly Deadline Status: <strong>{days_left} Trading Days Left</strong></div>
+            <div class="banner {regime_class}">Macro Market Trend (SPY Filter): {regime_text}</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ETF</th>
+                        <th>Live Price</th>
+                        <th>20D Midpoint</th>
+                        <th>Daily Volatility</th>
+                        <th>Target Limit Price</th>
+                        <th>Z-Score</th>
+                        <th>Core Execution Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {table_rows}
+                </tbody>
+            </table>
+        </div>
+    </body>
+    </html>"""
     
-    final_text = "\n".join(report)
-    
-    # Print output to console logs
-    print(final_text)
-    
-    # Save a temporary copy of text output for email runner pipeline access
-    with open("email_report.txt", "w", encoding="utf-8") as f:
-        f.write(final_text)
+    with open("index.html", "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print("Dashboard static webpage built successfully!")
