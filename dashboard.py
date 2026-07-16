@@ -21,8 +21,6 @@ def calculate_macro_regime():
 def get_days_to_deadline():
     """Calculate trading days left until TDM -4 (Ultimate Monthly Buy Window)"""
     today = datetime.now()
-    # Estimate trading days remaining by excluding weekends roughly
-    end_of_month = datetime(today.year, today.month, 1)
     if today.month == 12:
         end_of_month = datetime(today.year + 1, 1, 1)
     else:
@@ -51,7 +49,7 @@ def generate_etf_metrics(regime, days_left):
             
         z_score = (live_price - midpoint_20d) / std_dev_20d
         
-        # Hard Rule: Force execution if time limit has elapsed
+        # Rule Check: Force market execution if deadline window has expired
         if days_left <= 0:
             action = "🟢 FORCE MARKET BUY NOW (Deadline Reached)"
         elif live_price <= target_limit:
@@ -70,7 +68,7 @@ if __name__ == "__main__":
     regime, spy_live, spy_ma = calculate_macro_regime()
     days_left = get_days_to_deadline()
     
-    # Structure the report string
+    # Structure text strings for email formatting
     report = []
     report.append("=" * 80)
     report.append(f"PALI INSTITUTIONAL EXECUTION MATRICES | {datetime.now().strftime('%d %b %Y %H:%M')}")
@@ -87,9 +85,9 @@ if __name__ == "__main__":
     
     final_text = "\n".join(report)
     
-    # 1. Print output to GitHub logs console
+    # Print output to console logs
     print(final_text)
     
-    # 2. Dump output into a temporary text report file for the email trigger
+    # Save a temporary copy of text output for email runner pipeline access
     with open("email_report.txt", "w", encoding="utf-8") as f:
         f.write(final_text)
