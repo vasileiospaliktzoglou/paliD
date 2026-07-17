@@ -39,7 +39,6 @@ def generate_etf_metrics(regime, days_left):
         midpoint_20d = rolling_window['Close'].mean()
         std_dev_20d = rolling_window['Close'].std()
         
-        # Isolate the current trading session's exact Intraday low and high limits
         today_session = hist.iloc[-1]
         daily_low = today_session['Low']
         daily_high = today_session['High']
@@ -50,6 +49,15 @@ def generate_etf_metrics(regime, days_left):
             target_limit = midpoint_20d - (2.0 * std_dev_20d)
             
         z_score = (live_price - midpoint_20d) / std_dev_20d
+        
+        # New Feature 3: Calculate direct distance to target metrics
+        dist_euro = live_price - target_limit
+        dist_pct = (dist_euro / live_price) * 100
+        
+        # New Feature 1: Momentum Gap-Down Protection Warning
+        momentum_warning = ""
+        if z_score < -1.5:
+            momentum_warning = ' <span class="warn-badge">⚠️ HEAVY MOMENTUM CRASH</span>'
         
         if days_left <= 0:
             action = "🟢 FORCE MARKET BUY NOW"
@@ -64,8 +72,8 @@ def generate_etf_metrics(regime, days_left):
         results.append({
             "ETF": display_name, "Price": f"€{live_price:.2f}", "Avg": f"€{midpoint_20d:.2f}",
             "DailyLow": f"€{daily_low:.2f}", "DailyHigh": f"€{daily_high:.2f}",
-            "Volatility": f"€{std_dev_20d:.2f}", "Target": f"€{target_limit:.2f}",
-            "ZScore": f"{z_score:.2f}", "Action": action, "Class": color_class
+            "Target": f"€{target_limit:.2f}", "Distance": f"€{dist_euro:.2f} ({dist_pct:.2f}%)",
+            "ZScore": f"{z_score:.2f}", "Action": action + momentum_warning, "Class": color_class
         })
     return results
 
@@ -86,8 +94,8 @@ if __name__ == "__main__":
             <td><span class="range-text-low">{m['DailyLow']}</span></td>
             <td><span class="range-text-high">{m['DailyHigh']}</span></td>
             <td>{m['Avg']}</td>
-            <td>{m['Volatility']}</td>
             <td><strong>{m['Target']}</strong></td>
+            <td>{m['Distance']}</td>
             <td>{m['ZScore']}</td>
             <td><span class="badge {m['Class']}">{m['Action']}</span></td>
         </tr>
@@ -101,9 +109,12 @@ if __name__ == "__main__":
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
             body {{ font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f8f9fa; color: #212529; padding: 20px; }}
-            .container {{ max-width: 1050px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }}
-            h1 {{ font-size: 24px; margin-top: 0; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }}
-            .meta {{ font-size: 14px; color: #64748b; margin-bottom: 20px; }}
+            .container {{ max-width: 1150px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }}
+            .header-flex {{ display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 5px; }}
+            h1 {{ font-size: 24px; margin: 0; color: #1e293b; }}
+            .refresh-btn {{ background-color: #1a73e8; color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; font-weight: 600; font-size: 13px; }}
+            .refresh-btn:hover {{ background-color: #1557b0; }}
+            .meta {{ font-size: 14px; color: #64748b; margin-bottom: 20px; margin-top: 10px; }}
             .banner {{ padding: 12px 15px; border-radius: 6px; font-weight: bold; margin-bottom: 25px; }}
             .bull-banner {{ background-color: #e6f4ea; color: #137333; }}
             .bear-banner {{ background-color: #fce8e6; color: #c5221f; }}
@@ -113,13 +124,17 @@ if __name__ == "__main__":
             .badge {{ padding: 6px 12px; border-radius: 4px; font-weight: 600; font-size: 13px; display: inline-block; }}
             .buy-now {{ background-color: #e6f4ea; color: #137333; }}
             .set-limit {{ background-color: #e8f0fe; color: #1a73e8; }}
+            .warn-badge {{ background-color: #fff0f6; color: #c41d7f; border: 1px solid #ffadd2; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; }}
             .range-text-low {{ color: #b45309; font-weight: 500; }}
             .range-text-high {{ color: #0369a1; font-weight: 500; }}
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>PALI ETF Execution Dashboard v2.2</h1>
+            <div class="header-flex">
+                <h1>PALI ETF Execution Dashboard v2.4</h1>
+                <a href="https://github.com" target="_blank" class="refresh-btn">⚡ FORCE LIVE REFRESH</a>
+            </div>
             <div class="meta">Last Updated: {datetime.now().strftime('%d %b %Y %H:%M')} CET | Monthly Deadline Status: <strong>{days_left} Trading Days Left</strong></div>
             <div class="banner {regime_class}">Macro Market Trend (SPY Filter): {regime_text}</div>
             <table>
@@ -130,8 +145,8 @@ if __name__ == "__main__":
                         <th>Daily Low</th>
                         <th>Daily High</th>
                         <th>20D Midpoint</th>
-                        <th>Daily Volatility</th>
                         <th>Target Limit Price</th>
+                        <th>Distance to Target</th>
                         <th>Z-Score</th>
                         <th>Core Execution Action</th>
                     </tr>
@@ -146,4 +161,4 @@ if __name__ == "__main__":
     
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html_content)
-    print("Dashboard static webpage built successfully with intraday daily anchors!")
+    print("Dashboard version 2.4 compiled successfully.")
